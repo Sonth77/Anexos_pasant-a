@@ -1,0 +1,85 @@
+let
+      Origen = Folder.Files("C:\Users\fmoralesg\OneDrive - dane.gov.co\PROYECTO ETUP\Sector transporte\Datos\IPC"),
+    #"Filas filtradas" = Table.SelectRows(Origen, each [Extension] = ".xlsx"),
+    #"Filas filtradas1" = Table.SelectRows(#"Filas filtradas", each not Text.StartsWith([Name], "~")),
+    #"Filas filtradas2" = Table.SelectRows(#"Filas filtradas1", each ([Name] = "IPC_Div_Vmen_Vanu_Vaño.xlsx" or [Name] = "IPC_Grup_Vmen_Vanu_Vaño.xlsx" or [Name] = "IPC_Subc_Vmen_Vanu_Vaño.xlsx" or [Name] = "IPC_T_Vmen_Vanu_V_año.xlsx")),
+    #"Otras columnas quitadas2" = Table.SelectColumns(#"Filas filtradas2",{"Content", "Name"}),
+    #"Personalizada agregada" = Table.AddColumn(#"Otras columnas quitadas2", "IPC", each Excel.Workbook([Content],true)),
+    #"Columnas quitadas" = Table.RemoveColumns(#"Personalizada agregada",{"Content"}),
+    #"Se expandió IPC_Jul1" = Table.ExpandTableColumn(#"Columnas quitadas", "IPC", {"Name", "Data", "Item", "Kind", "Hidden"}, {"Name.1", "Data", "Item", "Kind", "Hidden"}),
+    #"Filas filtradas4" = Table.SelectRows(#"Se expandió IPC_Jul1", each ([Item] = "Hoja1")),
+    #"Otras columnas quitadas1" = Table.SelectColumns(#"Filas filtradas4",{"Name", "Data"}),
+    #"Otras columnas quitadas" = Table.SelectColumns(#"Otras columnas quitadas1",{"Name", "Data"}),
+    #"Columnas con nombre cambiado2" = Table.RenameColumns(#"Otras columnas quitadas",{{"Name", "Categoria"}}),
+    #"Valor reemplazado1" = Table.ReplaceValue(#"Columnas con nombre cambiado2","IPC_Div_Vmen_Vanu_Vaño.xlsx","División",Replacer.ReplaceText,{"Categoria"}),
+    #"Valor reemplazado3" = Table.ReplaceValue(#"Valor reemplazado1","IPC_Grup_Vmen_Vanu_Vaño.xlsx","Grupo",Replacer.ReplaceText,{"Categoria"}),
+    #"Valor reemplazado4" = Table.ReplaceValue(#"Valor reemplazado3","IPC_Subc_Vmen_Vanu_Vaño.xlsx","Subclase",Replacer.ReplaceText,{"Categoria"}),
+    #"Valor reemplazado2" = Table.ReplaceValue(#"Valor reemplazado4","IPC_T_Vmen_Vanu_V_año.xlsx","Total",Replacer.ReplaceText,{"Categoria"}),
+    #"Se expandió Data" = Table.ExpandTableColumn(#"Valor reemplazado2", "Data", {"Año", "Mes", "División", "Variación Mensual", "Variación Año Corrido", "Variación Anual", "Grupo", "Subclase"}, {"Año", "Mes", "División", "Variación Mensual", "Variación Año Corrido", "Variación Anual", "Grupo", "Subclase"}),
+    #"Columnas con nombre cambiado" = Table.RenameColumns(#"Se expandió Data",{{"División", "Codigo"}}),
+    #"Columna condicional agregada" = Table.AddColumn(#"Columnas con nombre cambiado", "Division", each if [Grupo] = null then [Codigo] else [Grupo]),
+    #"Columna condicional agregada1" = Table.AddColumn(#"Columna condicional agregada", "Final", each if [Subclase] = null then [Division] else [Subclase]),
+    #"Columnas quitadas1" = Table.RemoveColumns(#"Columna condicional agregada1",{"Division", "Grupo"}),
+    #"Columnas quitadas2" = Table.RemoveColumns(#"Columnas quitadas1",{"Subclase", "Codigo"}),
+    #"Valor reemplazado" = Table.ReplaceValue(#"Columnas quitadas2",null,"99 - Total nacional",Replacer.ReplaceValue,{"Final"}),
+    #"Tipo cambiado" = Table.TransformColumnTypes(#"Valor reemplazado",{{"Variación Anual", type number}}),
+    #"Personalizada agregada2" = Table.AddColumn(#"Tipo cambiado", "Cod_Mes", each if [Mes] = "Ene" then 1 
+else if [Mes] = "Feb" then 2 
+else if [Mes] = "Mar" then 3
+else if [Mes] = "Abr" then 4 
+else if [Mes] = "May" then 5 
+else if [Mes] = "Jun" then 6 
+else if [Mes] = "Jul" then 7
+else if [Mes] = "Ago" then 8 
+else if [Mes] = "Sep" then 9 
+else if [Mes] = "Oct" then 10
+else if [Mes] = "Nov" then 11
+else if [Mes] = "Dic" then 12
+else 
+""),
+    #"Tipo cambiado1" = Table.TransformColumnTypes(#"Personalizada agregada2",{{"Año", type text}, {"Mes", type text}, {"Variación Año Corrido", type number}, {"Variación Anual", type number}, {"Variación Mensual", type number}}),
+    #"Columnas reordenadas" = Table.ReorderColumns(#"Tipo cambiado1",{"Categoria", "Año", "Mes", "Final", "Variación Año Corrido", "Variación Anual", "Variación Mensual", "Cod_Mes"}),
+    #"Dividir columna por delimitador" = Table.SplitColumn(#"Columnas reordenadas", "Final", Splitter.SplitTextByDelimiter(" - ", QuoteStyle.Csv), {"Final.1", "Final.2"}),
+    #"Columnas con nombre cambiado1" = Table.RenameColumns(#"Dividir columna por delimitador",{{"Final.1", "Código"}}),
+    #"Tipo cambiado3" = Table.TransformColumnTypes(#"Columnas con nombre cambiado1",{{"Cod_Mes", type text}}),
+    #"Columnas con nombre cambiado3" = Table.RenameColumns(#"Tipo cambiado3",{{"Final.2", "Concepto"}}),
+    #"Personalizada agregada1" = Table.AddColumn(#"Columnas con nombre cambiado3", "Registro", each "IPC"),
+    #"Personalizada agregada3" = Table.AddColumn(#"Personalizada agregada1", "Trimestre", each if [Mes] = "Ene" or [Mes] = "Feb" or [Mes] = "Mar" then 
+"I"
+else if [Mes] = "Abr" or [Mes] = "May" or [Mes] = "Jun" then 
+"II" 
+else if [Mes] = "Jul" or [Mes] = "Ago" or [Mes] = "Sep" then 
+"III" 
+else if [Mes] = "Oct" or [Mes] = "Nov" or [Mes] = "Dic" then 
+"IV" 
+else 
+""),
+    #"Personalizada agregada4" = Table.AddColumn(#"Personalizada agregada3", "ID", each [Año] & "_" & [Trimestre]),
+    #"Personalizada agregada5" = Table.AddColumn(#"Personalizada agregada4", "Cod_nombre", each if [Código] = "07210100" then "Llantas"
+else if [Código] = "07219900" then "Repuestos"
+else if [Código] = "07220500" then "Combustible"
+else if [Código] = "07230100" then"Mantenimiento"
+else if [Código] = "07230200" then "Aceite"
+else if [Código] = "07240100" then "Parqueo"
+else if [Código] = "07240200" then "Peajes"
+else if [Código] = "07240300" then "Gastos"
+else if [Código] = "07330100" then "Avión"
+else if [Código] = "07371000" then "Urbano"
+else if [Código] = "07372000" then"Intermunicipal"
+else if [Código] = "07373000" then "Escolar"
+else 
+""),
+    #"Valor reemplazado5" = Table.ReplaceValue(#"Personalizada agregada5","Ene","Enero",Replacer.ReplaceText,{"Mes"}),
+    #"Valor reemplazado6" = Table.ReplaceValue(#"Valor reemplazado5","Feb","Febrero",Replacer.ReplaceText,{"Mes"}),
+    #"Valor reemplazado7" = Table.ReplaceValue(#"Valor reemplazado6","Mar","Marzo",Replacer.ReplaceText,{"Mes"}),
+    #"Valor reemplazado8" = Table.ReplaceValue(#"Valor reemplazado7","Abr","Abril",Replacer.ReplaceText,{"Mes"}),
+    #"Valor reemplazado9" = Table.ReplaceValue(#"Valor reemplazado8","May","Mayo",Replacer.ReplaceText,{"Mes"}),
+    #"Valor reemplazado10" = Table.ReplaceValue(#"Valor reemplazado9","Jun","Junio",Replacer.ReplaceText,{"Mes"}),
+    #"Valor reemplazado11" = Table.ReplaceValue(#"Valor reemplazado10","Jul","Julio",Replacer.ReplaceText,{"Mes"}),
+    #"Valor reemplazado12" = Table.ReplaceValue(#"Valor reemplazado11","Ago","Agosto",Replacer.ReplaceText,{"Mes"}),
+    #"Valor reemplazado13" = Table.ReplaceValue(#"Valor reemplazado12","Sep","Septiembre",Replacer.ReplaceText,{"Mes"}),
+    #"Valor reemplazado14" = Table.ReplaceValue(#"Valor reemplazado13","Oct","Octubre",Replacer.ReplaceText,{"Mes"}),
+    #"Valor reemplazado15" = Table.ReplaceValue(#"Valor reemplazado14","Nov","Noviembre",Replacer.ReplaceText,{"Mes"}),
+    #"Valor reemplazado16" = Table.ReplaceValue(#"Valor reemplazado15","Dic","Diciembre",Replacer.ReplaceText,{"Mes"})
+in
+    #"Valor reemplazado16"
