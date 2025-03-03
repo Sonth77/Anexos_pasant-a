@@ -1,0 +1,62 @@
+let
+    Origen = Folder.Files("C:\Users\fmoralesg\OneDrive - dane.gov.co\PROYECTO ETUP\Sector transporte\Datos\IPC"),
+    #"Filas filtradas" = Table.SelectRows(Origen, each ([Extension] = ".xlsx")),
+    #"Filas filtradas1" = Table.SelectRows(#"Filas filtradas", each not Text.StartsWith([Name], "~")),
+    #"Filas filtradas2" = Table.SelectRows(#"Filas filtradas1", each ([Name] = "anex-ICTIP-VariacionesContribucioHistor-IItrim2024.xlsx")),
+    #"Otras columnas quitadas" = Table.SelectColumns(#"Filas filtradas2",{"Content"}),
+    #"Personalizada agregada" = Table.AddColumn(#"Otras columnas quitadas", "Personalizado", each Excel.Workbook([Content])),
+    #"Se expandió Personalizado" = Table.ExpandTableColumn(#"Personalizada agregada", "Personalizado", {"Name", "Data", "Item", "Kind", "Hidden"}, {"Name", "Data", "Item", "Kind", "Hidden"}),
+    #"Filas filtradas3" = Table.SelectRows(#"Se expandió Personalizado", each ([Name] = "Anexo1")),
+    #"Otras columnas quitadas1" = Table.SelectColumns(#"Filas filtradas3",{"Name", "Data"}),
+    #"Se expandió Data" = Table.ExpandTableColumn(#"Otras columnas quitadas1", "Data", {"Column1", "Column2", "Column3", "Column4", "Column5", "Column6", "Column7", "Column8", "Column9", "Column10", "Column11", "Column12", "Column13", "Column14", "Column15", "Column16", "Column17", "Column18", "Column19", "Column20", "Column21", "Column22", "Column23", "Column24", "Column25", "Column26", "Column27", "Column28", "Column29", "Column30", "Column31", "Column32", "Column33", "Column34", "Column35", "Column36", "Column37", "Column38"}, {"Column1", "Column2", "Column3", "Column4", "Column5", "Column6", "Column7", "Column8", "Column9", "Column10", "Column11", "Column12", "Column13", "Column14", "Column15", "Column16", "Column17", "Column18", "Column19", "Column20", "Column21", "Column22", "Column23", "Column24", "Column25", "Column26", "Column27", "Column28", "Column29", "Column30", "Column31", "Column32", "Column33", "Column34", "Column35", "Column36", "Column37", "Column38"}),
+    #"Columnas quitadas" = Table.RemoveColumns(#"Se expandió Data",{"Name", "Column14", "Column26", "Column38"}),
+    #"Rango de filas conservado" = Table.Range(#"Columnas quitadas",7,38),
+    #"Rellenar hacia abajo" = Table.FillDown(#"Rango de filas conservado",{"Column1"}),
+    #"Valor reemplazado" = Table.ReplaceValue(#"Rellenar hacia abajo",null,"Mes",Replacer.ReplaceValue,{"Column2"}),
+    #"Rellenar hacia abajo1" = Table.FillDown(#"Valor reemplazado",{"Column3"}),
+    #"Columnas combinadas" = Table.CombineColumns(Table.TransformColumnTypes(#"Rellenar hacia abajo1", {{"Column1", type text}}, "es-CO"),{"Column1", "Column2"},Combiner.CombineTextByDelimiter("_", QuoteStyle.None),"Combinada"),
+    #"Tabla transpuesta" = Table.Transpose(#"Columnas combinadas"),
+    #"Rellenar hacia abajo2" = Table.FillDown(#"Tabla transpuesta",{"Column1", "Column2"}),
+    #"Personalizada agregada1" = Table.AddColumn(#"Rellenar hacia abajo2", "Personalizado", each if [Column2] = "Total nacional" and [Column3] = null then 
+"Total nacional" 
+else 
+[Column3]),
+    #"Columnas reordenadas" = Table.ReorderColumns(#"Personalizada agregada1",{"Personalizado", "Column1", "Column2", "Column3", "Column4", "Column5", "Column6", "Column7", "Column8", "Column9", "Column10", "Column11", "Column12", "Column13", "Column14", "Column15", "Column16", "Column17", "Column18", "Column19", "Column20", "Column21", "Column22", "Column23", "Column24", "Column25", "Column26", "Column27", "Column28", "Column29", "Column30", "Column31", "Column32", "Column33", "Column34", "Column35", "Column36", "Column37", "Column38"}),
+    #"Columnas quitadas1" = Table.RemoveColumns(#"Columnas reordenadas",{"Column3"}),
+    #"Rellenar hacia abajo3" = Table.FillDown(#"Columnas quitadas1",{"Personalizado"}),
+    #"Columnas reordenadas1" = Table.ReorderColumns(#"Rellenar hacia abajo3",{"Column4", "Column1", "Column2", "Personalizado", "Column5", "Column6", "Column7", "Column8", "Column9", "Column10", "Column11", "Column12", "Column13", "Column14", "Column15", "Column16", "Column17", "Column18", "Column19", "Column20", "Column21", "Column22", "Column23", "Column24", "Column25", "Column26", "Column27", "Column28", "Column29", "Column30", "Column31", "Column32", "Column33", "Column34", "Column35", "Column36", "Column37", "Column38"}),
+    #"Valor reemplazado1" = Table.ReplaceValue(#"Columnas reordenadas1","(p.p.)","",Replacer.ReplaceText,{"Column4"}),
+    #"Valor reemplazado2" = Table.ReplaceValue(#"Valor reemplazado1","(%)","",Replacer.ReplaceText,{"Column4"}),
+    #"Texto en minúsculas" = Table.TransformColumns(#"Valor reemplazado2",{{"Column1", Text.Lower, type text}}),
+    #"Valor reemplazado4" = Table.ReplaceValue(#"Texto en minúsculas",null,"Contribución ",Replacer.ReplaceValue,{"Column4"}),
+    #"Valor reemplazado5" = Table.ReplaceValue(#"Valor reemplazado4","Total nacional","Contribución ",Replacer.ReplaceText,{"Column4"}),
+    #"Columnas combinadas1" = Table.CombineColumns(#"Valor reemplazado5",{"Column4", "Column1"},Combiner.CombineTextByDelimiter("", QuoteStyle.None),"Combinada1"),
+    #"Columnas quitadas2" = Table.RemoveColumns(#"Columnas combinadas1",{"Column2"}),
+    #"Tabla transpuesta1" = Table.Transpose(#"Columnas quitadas2"),
+    #"Valor reemplazado3" = Table.ReplaceValue(#"Tabla transpuesta1",null,"NULL",Replacer.ReplaceValue,{"Column24", "Column25", "Column26", "Column27", "Column28", "Column29", "Column30", "Column31", "Column32", "Column33", "Column34"}),
+    #"Tabla transpuesta2" = Table.Transpose(#"Valor reemplazado3"),
+    #"Encabezados promovidos" = Table.PromoteHeaders(#"Tabla transpuesta2", [PromoteAllScalars=true]),
+    #"Otras columnas con anulación de dinamización" = Table.UnpivotOtherColumns(#"Encabezados promovidos", {"Periodo_Mesperiodo_mes", "Periodo_Mes"}, "Atributo", "Valor"),
+    #"Tipo cambiado" = Table.TransformColumnTypes(#"Otras columnas con anulación de dinamización",{{"Valor", type number}}),
+    #"Columnas reordenadas3" = Table.ReorderColumns(#"Tipo cambiado",{"Atributo", "Periodo_Mesperiodo_mes", "Periodo_Mes", "Valor"}),
+    #"Columnas con nombre cambiado" = Table.RenameColumns(#"Columnas reordenadas3",{{"Periodo_Mesperiodo_mes", "Medida"}, {"Periodo_Mes", "Concepto"}}),
+    #"Dividir columna por delimitador" = Table.SplitColumn(#"Columnas con nombre cambiado", "Atributo", Splitter.SplitTextByDelimiter("_", QuoteStyle.Csv), {"Atributo.1", "Atributo.2"}),
+    #"Tipo cambiado1" = Table.TransformColumnTypes(#"Dividir columna por delimitador",{{"Atributo.1", Int64.Type}, {"Atributo.2", type text}}),
+    #"Columnas con nombre cambiado1" = Table.RenameColumns(#"Tipo cambiado1",{{"Atributo.1", "Año"}, {"Atributo.2", "Mes"}}),
+    #"Columna dinamizada" = Table.Pivot(#"Columnas con nombre cambiado1", List.Distinct(#"Columnas con nombre cambiado1"[Medida]), "Medida", "Valor"),
+    #"Columnas con nombre cambiado2" = Table.RenameColumns(#"Columna dinamizada",{{"Mes", "Periodo"}}),
+    #"Personalizada agregada3" = Table.AddColumn(#"Columnas con nombre cambiado2", "Trimestre", each if [Periodo] = "Enero-marzo" then "I"
+else if 
+[Periodo] = "Abril-junio" then "II"
+else if 
+[Periodo] = "Julio-septiembre" then "III"
+else if 
+[Periodo] = "Octubre-diciembre" then "IV"
+else 
+[Periodo] = ""),
+    #"Tipo cambiado3" = Table.TransformColumnTypes(#"Personalizada agregada3",{{"Año", type text}}),
+    #"Personalizada agregada4" = Table.AddColumn(#"Tipo cambiado3", "ID", each [Año] & "_" & [Trimestre]),
+    #"Tipo cambiado2" = Table.TransformColumnTypes(#"Personalizada agregada4",{{"ID", type text}, {"Trimestre", type text}, {"Concepto", type text}, {"Año", Int64.Type}}),
+    #"Personalizada agregada2" = Table.AddColumn(#"Tipo cambiado2", "Registro", each "ICTIP")
+in
+    #"Personalizada agregada2"

@@ -1,0 +1,35 @@
+let
+    Origen = Folder.Files(#"RUTA (2)"),
+    #"Filas filtradas" = Table.SelectRows(Origen, each not Text.StartsWith([Extension], "~")),
+    #"Filas filtradas1" = Table.SelectRows(#"Filas filtradas", each ([Extension] = ".xlsx") and ([Name] = "PIB_Corriente_Chile.xlsx")),
+    #"Otras columnas quitadas" = Table.SelectColumns(#"Filas filtradas1",{"Content", "Name"}),
+    #"Personalizada agregada" = Table.AddColumn(#"Otras columnas quitadas", "Personalizado", each Excel.Workbook([Content],true)),
+    #"Otras columnas quitadas1" = Table.SelectColumns(#"Personalizada agregada",{"Personalizado"}),
+    #"Se expandió Personalizado" = Table.ExpandTableColumn(#"Otras columnas quitadas1", "Personalizado", {"Name", "Data", "Item", "Kind", "Hidden"}, {"Name", "Data", "Item", "Kind", "Hidden"}),
+    #"Otras columnas quitadas2" = Table.SelectColumns(#"Se expandió Personalizado",{"Data"}),
+    #"Se expandió Data" = Table.ExpandTableColumn(#"Otras columnas quitadas2", "Data", {"Producto interno bruto por clase de actividad económica, a precios corrientes, series empalmadas, referencia 2018 (miles de millones de pesos)", "", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59", "60", "61", "62", "63", "64", "65", "66", "67", "68", "69", "70", "71", "72", "73", "74", "75", "76", "77", "78", "79", "80", "81", "82", "83", "84", "85", "86", "87", "88", "89", "90", "91", "92", "93", "94", "95", "96", "97", "98"}, {"Producto interno bruto por clase de actividad económica, a precios corrientes, s", "Columna1", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59", "60", "61", "62", "63", "64", "65", "66", "67", "68", "69", "70", "71", "72", "73", "74", "75", "76", "77", "78", "79", "80", "81", "82", "83", "84", "85", "86", "87", "88", "89", "90", "91", "92", "93", "94", "95", "96", "97", "98"}),
+    #"Columnas quitadas" = Table.RemoveColumns(#"Se expandió Data",{"Producto interno bruto por clase de actividad económica, a precios corrientes, s"}),
+    #"Filas filtradas2" = Table.SelectRows(#"Columnas quitadas", each ([1] <> null)),
+    #"Tabla transpuesta" = Table.Transpose(#"Filas filtradas2"),
+    #"Encabezados promovidos" = Table.PromoteHeaders(#"Tabla transpuesta", [PromoteAllScalars=true]),
+    #"Tipo cambiado" = Table.TransformColumnTypes(#"Encabezados promovidos",{{"Descripción series", type datetime}, {"Agropecuario-silvícola ", type number}, {"Pesca", type number}, {"Minería", type number}, {"   Minería del cobre", type number}, {"   Otras actividades mineras", type number}, {"Industria manufacturera", type number}, {"   Alimentos, bebidas y tabaco", type number}, {"      Alimentos", type number}, {"      Bebidas y tabaco", type number}, {"   Textil, prendas de vestir, cuero y calzado", type number}, {"   Maderas y muebles", type number}, {"   Celulosa, papel e imprentas", type number}, {"   Química, petróleo, caucho y plástico", type number}, {"   Minerales no metálicos y metálica básica", type number}, {"   Productos metálicos, maquinaria, equipos y otros", type number}, {"Electricidad, gas, agua y gestión de desechos", type number}, {"Construcción", type number}, {"Comercio, restaurantes y hoteles", type number}, {"   Comercio", type number}, {"   Restaurantes y hoteles", type number}, {"Transporte", type number}, {"Comunicaciones y servicios de información", type number}, {"Servicios financieros y empresariales", type number}, {"   Servicios financieros", type number}, {"   Servicios empresariales", type number}, {"Servicios de vivienda e inmobiliarios", type number}, {"Servicios personales", type number}, {"Administración pública", type number}, {"PIB a costo de factores", type number}, {"Impuestos sobre los productos", type number}, {"PIB a precios corrientes", type number}}),
+    #"Otras columnas con anulación de dinamización" = Table.UnpivotOtherColumns(#"Tipo cambiado", {"Descripción series"}, "Atributo", "Valor"),
+    #"Personalizada agregada1" = Table.AddColumn(#"Otras columnas con anulación de dinamización", "Personalizado", each Date.Year([Descripción series])),
+    #"Personalizada agregada2" = Table.AddColumn(#"Personalizada agregada1", "Personalizado.1", each Date.Month([Descripción series])),
+    #"Columnas reordenadas" = Table.ReorderColumns(#"Personalizada agregada2",{"Personalizado", "Personalizado.1", "Descripción series", "Atributo", "Valor"}),
+    #"Columnas quitadas1" = Table.RemoveColumns(#"Columnas reordenadas",{"Descripción series"}),
+    #"Personalizada agregada3" = Table.AddColumn(#"Columnas reordenadas", "Trimestre", each if [Personalizado.1] = 3 then "I"
+else if [Personalizado.1] = 6 then "II"
+else if [Personalizado.1] = 9 then "III"
+else if [Personalizado.1] = 12 then "IV"
+else ""),
+    #"Columnas quitadas2" = Table.RemoveColumns(#"Personalizada agregada3",{"Personalizado.1"}),
+    #"Columnas con nombre cambiado" = Table.RenameColumns(#"Columnas quitadas2",{{"Personalizado", "Año"}, {"Atributo", "Concepto"}}),
+    #"Personalizada agregada4" = Table.AddColumn(#"Columnas con nombre cambiado", "Pais", each "Chile"),
+    #"Tipo cambiado2" = Table.TransformColumnTypes(#"Personalizada agregada4",{{"Año", type text}}),
+    #"Personalizada agregada5" = Table.AddColumn(#"Tipo cambiado2", "ID", each [Año] & "_" & [Trimestre]),
+    #"Tipo cambiado1" = Table.TransformColumnTypes(#"Personalizada agregada5",{{"ID", type text}, {"Trimestre", type text}, {"Año", Int64.Type}}),
+    #"Columnas quitadas3" = Table.RemoveColumns(#"Tipo cambiado1",{"Descripción series"}),
+    #"Columnas reordenadas1" = Table.ReorderColumns(#"Columnas quitadas3",{"Año", "Trimestre", "Concepto", "Valor", "Pais", "ID"})
+in
+    #"Columnas reordenadas1"

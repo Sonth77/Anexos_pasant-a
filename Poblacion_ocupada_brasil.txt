@@ -1,0 +1,25 @@
+let
+    Origen = Folder.Files(#"RUTA (2)"),
+    #"Filas filtradas1" = Table.SelectRows(Origen, each not Text.StartsWith([Extension], "~")),
+    #"Filas filtradas" = Table.SelectRows(#"Filas filtradas1", each ([Extension] = ".xlsx") and ([Name] = "Pob_Ocupada_Brasil.xlsx")),
+    #"Otras columnas quitadas" = Table.SelectColumns(#"Filas filtradas",{"Content", "Name"}),
+    #"Personalizada agregada" = Table.AddColumn(#"Otras columnas quitadas", "Personalizado", each Excel.Workbook([Content],true)),
+    #"Otras columnas quitadas1" = Table.SelectColumns(#"Personalizada agregada",{"Personalizado"}),
+    #"Se expandió Personalizado" = Table.ExpandTableColumn(#"Otras columnas quitadas1", "Personalizado", {"Name", "Data", "Item", "Kind", "Hidden"}, {"Name", "Data", "Item", "Kind", "Hidden"}),
+    #"Filas filtradas2" = Table.SelectRows(#"Se expandió Personalizado", each ([Name] = "Tabela")),
+    #"Otras columnas quitadas2" = Table.SelectColumns(#"Filas filtradas2",{"Data"}),
+    #"Se expandió Data" = Table.ExpandTableColumn(#"Otras columnas quitadas2", "Data", {"Tabela 5434 - Pessoas de 14 anos ou mais de idade, ocupadas na semana de referência, por grupamento de atividade no trabalho principal", "Column2", "Column3", "Column4", "Column5", "Column6", "Column7", "Column8", "Column9", "Column10", "Column11", "Column12", "Column13", "Column14", "Column15", "Column16", "Column17", "Column18", "Column19", "Column20", "Column21", "Column22", "Column23", "Column24", "Column25", "Column26", "Column27", "Column28", "Column29", "Column30", "Column31", "Column32", "Column33", "Column34", "Column35", "Column36", "Column37", "Column38", "Column39", "Column40", "Column41", "Column42", "Column43", "Column44", "Column45", "Column46", "Column47", "Column48", "Column49", "Column50", "Column51"}, {"Tabela 5434 - Pessoas de 14 anos ou mais de idade, ocupadas na semana de referên", "Column2", "Column3", "Column4", "Column5", "Column6", "Column7", "Column8", "Column9", "Column10", "Column11", "Column12", "Column13", "Column14", "Column15", "Column16", "Column17", "Column18", "Column19", "Column20", "Column21", "Column22", "Column23", "Column24", "Column25", "Column26", "Column27", "Column28", "Column29", "Column30", "Column31", "Column32", "Column33", "Column34", "Column35", "Column36", "Column37", "Column38", "Column39", "Column40", "Column41", "Column42", "Column43", "Column44", "Column45", "Column46", "Column47", "Column48", "Column49", "Column50", "Column51"}),
+    #"Filas filtradas3" = Table.SelectRows(#"Se expandió Data", each ([Column3] <> null)),
+    #"Tabla transpuesta" = Table.Transpose(#"Filas filtradas3"),
+    #"Encabezados promovidos" = Table.PromoteHeaders(#"Tabla transpuesta", [PromoteAllScalars=true]),
+    #"Otras columnas con anulación de dinamización" = Table.UnpivotOtherColumns(#"Encabezados promovidos", {"Column1"}, "Atributo", "Valor"),
+    #"Tipo cambiado1" = Table.TransformColumnTypes(#"Otras columnas con anulación de dinamización",{{"Valor", type number}}),
+    #"Dividir columna por delimitador" = Table.SplitColumn(#"Tipo cambiado1", "Column1", Splitter.SplitTextByEachDelimiter({" "}, QuoteStyle.Csv, true), {"Column1.1", "Column1.2"}),
+    #"Personalizada agregada1" = Table.AddColumn(#"Dividir columna por delimitador", "Trimestre", each if [Column1.1] = "1º trimestre" then "I" else if [Column1.1] = "2º trimestre" then "II" else if [Column1.1] = "3º trimestre" then "III" else if [Column1.1] = "4º trimestre" then "IV" else ""),
+    #"Columnas quitadas" = Table.RemoveColumns(#"Personalizada agregada1",{"Column1.1"}),
+    #"Personalizada agregada2" = Table.AddColumn(#"Columnas quitadas", "Pais", each "Brasil"),
+    #"Columnas con nombre cambiado" = Table.RenameColumns(#"Personalizada agregada2",{{"Atributo", "Concepto"}, {"Column1.2", "Año"}}),
+    #"Personalizada agregada3" = Table.AddColumn(#"Columnas con nombre cambiado", "ID", each [Año] & "_" & [Trimestre]),
+    #"Tipo cambiado" = Table.TransformColumnTypes(#"Personalizada agregada3",{{"ID", type text}, {"Pais", type text}, {"Trimestre", type text}, {"Año", Int64.Type}})
+in
+    #"Tipo cambiado"
