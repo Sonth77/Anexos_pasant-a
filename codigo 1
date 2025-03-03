@@ -1,0 +1,79 @@
+#________________________________________________________________________________________________________________
+#________________________________________ Paquetes __________________________________________________
+#________________________________________________________________________________________________________________
+import os
+import pandas as pd
+import numpy as np
+
+##__________________ Función para filtrar las columnas _______________________
+###______________________________________________________________
+
+def df_estandar(df, name_col):
+
+    colum_cont = [col for col in name_col if col in df.columns]
+
+    seleccion = df[colum_cont].copy()
+
+    columnas_faltantes = [col for col in name_col if col not in df.columns]
+    
+    for col in columnas_faltantes:
+        seleccion[col] = np.nan 
+    seleccion = seleccion[name_col]
+    return seleccion
+
+##_______ Función para encontrar valores en  df2 de df1 _________
+###______________________________________________________________
+
+def encontrar_posicion(valor, df_b_columna): ### Puedo evaluar previamente como se 
+    #pueden relacionar las bases de datos
+    if valor in df_b_columna.values:
+        return df_b_columna[df_b_columna == valor].index[0]
+    else:
+        return -1  
+    
+##______________________ Función para identificar la base ____________________________
+###___________________________________________________________________________________
+
+def deff_direct(valor, df_b_columna, nomb_direct, directorios): ## Para la columna de directorio
+    if valor in df_b_columna.values:
+        regresa = str(directorios) + "," + nomb_direct
+        return regresa
+    else: 
+        return directorios
+
+##_____________ Función para renombrar las columnas especificando el orden _______________
+###_______________________________________________________________________________________
+
+def renombrar(df, nombres, indices):
+    renon_col = {df.columns[col]: nombres[nombre_idx] for col, 
+                      nombre_idx in indices.items()}
+    df = df.rename(columns=renon_col)
+    df = df_estandar(df, nombres)
+    return df
+
+def cruce(df1, df2, nombres, indi_nombres, n_direct2):
+
+    ## Trtatamiento de df2
+    df2 = renombrar(df2, nombres, indi_nombres)
+    df2[nombres[27]] = "no"
+    df2[nombres[28]] = n_direct2
+
+    # Tratamiento de df1
+    df1[nombres[28]] = df1.apply(lambda row: 
+                                 deff_direct(row[nombres[5]], df2[nombres[5]], 
+                                            n_direct2, row[nombres[28]]), axis = 1)
+    
+    # Unión 
+    df_consolidado = pd.concat([df1,df2], ignore_index= True)
+
+    #df_consolidado = df_consolidado.drop_duplicates(subset=nombres[5], keep='first')
+
+    df_consolidado['no_null'] = df_consolidado.notna().sum(axis=1)
+
+    df_consolidado = df_consolidado.sort_values(by=[nombres[5], 'no_null'], ascending=[True, False])
+
+    df_consolidado = df_consolidado.drop_duplicates(subset=nombres[5], keep='first')
+
+    df_consolidado = df_consolidado.drop(columns=['no_null'])
+
+    return df_consolidado
