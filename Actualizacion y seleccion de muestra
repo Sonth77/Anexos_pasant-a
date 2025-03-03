@@ -1,0 +1,302 @@
+# Tratamiento de indicadores
+import os
+import pandas as pd
+import numpy as np
+Ruta_d = "C:\\Users\\brial\\OneDrive - dane.gov.co\\Directorio_seleccion_practicantes\\Consolidado_directorios.xlsx"
+Base_final = pd.read_excel(Ruta_d, sheet_name= 0, 
+                          decimal = ',')
+
+Ruta_DIG = "C:\\Users\\brial\\OneDrive - dane.gov.co\\Cruce de directorios-Transporte\\Solicitud_Servicios_DEE_RUES_2023c2\\Solicitud_Servicios_DEE_RUES_2023c2.txt"
+
+Ruta_DIG1 = "Hola"
+
+DIG_A = pd.read_table(Ruta_DIG, delimiter = "|")
+
+DIG_A.iloc[:,1]
+DIG_A['ESTADO_LEGAL']
+DIG_A['ESTADO_DE_LA_MATRICULA_RUES'] #Variable que indica si la empresa se encuentra activa po no
+DIG_A['CATEGORIA_MATRICULA_RUES']
+DIG_A.columns
+
+### Variables de interes
+
+# DE IDENTIFICADOR
+    ### 'TIPO_DOCUMENTO', 'NIT'
+
+
+# PERSONAS OCUPADAS 
+    ### 'PERSONAS_OCUPADAS_PILA'
+
+DIG_A.loc[:,['PERSONAS_OCUPADAS_PILA']].isna().sum() #1485038
+
+# INGRESOS
+    ### 'INGRESOS_SUPERSOC', 'INGRESOS', 'FEC_INGRESOS', 'PRO_INGRESOS', 'INGRESOS_OPERACIONALES', 'FEC_INGRESOS_OPERACIONALES',
+    ### 'PRO_INGRESOS_OPERACIONALES',
+
+DIG_A.loc[:,['INGRESOS_SUPERSOC', 'INGRESOS', 'FEC_INGRESOS']].isna().sum()
+
+#Actualizaré considerando la variable 'INGRESOS' (2756413), debido a 
+# que tiene más registros que 'INGRESOS_SUPERSOC' (3893082)
+
+
+# TIPO O CATEGORIA EJ: SI NATURAL, JURIDICA U OTRA
+    ### 'CATEGORIA_MATRICULA_RUES'
+DIG_A[DIG_A['TIPO_DOCUMENTO']== 1]
+DIG_A['TIPO_DOCUMENTO'].unique()
+
+
+DIG_A.loc[200538:3905809]['CATEGORIA_MATRICULA_RUES'] #Te tomo a tí
+
+DIG_A.loc[:]['CATEGORIA_MATRICULA_RUES'].unique()
+DIG_A.loc[DIG_A['TIPO_DOCUMENTO']== 1]['CATEGORIA_MATRICULA_RUES'].unique()
+
+# ESTADO DE LA EMPRESA
+    ### 'ESTADO_DE_LA_MATRICULA_RUES'
+DIG_A['ESTADO_DE_LA_MATRICULA_RUES']
+# DE INFORMACIÓN
+    ### 'NUM_ESTABLECIMIENTOS'
+
+# DE LOCALIDAD
+    ### 'DIRECCION', 'MUNI_ID_DPTO', 'MUNI_ID_MPIO', 'LATITUD', 'LONGITUD',
+    ###  'TELEFONO1', 'TELEFONO2', 'FAX', 'EMAIL',
+
+
+
+#with open(Ruta_DIG, 'r', encoding='utf-8') as archivo:
+    #lineas = archivo.readlines()
+    # Revisa las primeras líneas para ver el contenido
+    #for i, linea in enumerate(lineas[:10]):
+        #print(f"Línea {i + 1}: {linea}")
+#DIG_A.to_excel('Solicitud_Servicios_DEE_RUES_2023c2.xlsx', index=False)
+
+
+###### Actualización de la información
+
+#Variables finales para la actualización:
+# 'NIT', 'PERSONAS_OCUPADAS_PILA', 'INGRESOS' 'ESTADO_DE_LA_MATRICULA_RUES' 
+#  'DIRECCION', 'MUNI_ID_DPTO', 'MUNI_ID_MPIO', 'LATITUD', 'LONGITUD',
+    ###  'TELEFONO1', 'TELEFONO2', 'FAX', 'EMAIL'
+
+
+
+###########################
+names_obj = Base_final.columns
+df2 = DIG_A.copy()
+df1 = Base_final.copy()
+
+sns.boxplot( y ='Ingresos', data=Base_final, palette='pastel')
+plt.title('Boxplot por Categoría', fontsize=14)
+plt.show()
+
+
+#___________________________________________________________________
+
+sns.scatterplot(x='Personal Ocupado', y='Ingresos', data=Base_final, color='purple')
+# Personalizar el gráfico
+plt.title('Diagrama de Dispersión: Ingresos vs Personal Ocupado', fontsize=14)
+plt.xlabel('Personal Ocupado', fontsize=12)
+plt.ylabel('Ingresos', fontsize=12)
+plt.grid(True)
+plt.show()
+#______________________________________________________________________________
+
+print(Base_final['Codigo del municipio de ubicacion de la empresa (MPIO)'].isna().sum())
+print(Base_final['Ingresos'].isna().sum())
+print(Base_final['Personal Ocupado'].isna().sum())
+
+Base_final['Ingresos'].describe()
+Base_final['Personal Ocupado'].describe()
+
+df2.rename(columns={ 
+                    'MUNI_ID_MPIO': u'Codigo del municipio de ubicacion de la empresa (MPIO)', 
+                    'MUNI_ID_DPTO': u'Codigo del departamento de ubicacion de la empresa (DEPTO)', 
+                    'INGRESOS': u'Ingresos',
+                    'PERSONAS_OCUPADAS_PILA': u'Personal Ocupado',
+                    'NIT' : u'Numero de documento (IDNITCC)',
+                    'CIIU_PPAL': u'Actividad economica CIIU REV. 4 A.C. (ACTCOD1)'}, inplace=True)
+
+col_act = ['Codigo del departamento de ubicacion de la empresa (DEPTO)', 
+                         'Codigo del municipio de ubicacion de la empresa (MPIO)',
+                          'Ingresos', 'Personal Ocupado', 'Actividad economica CIIU REV. 4 A.C. (ACTCOD1)']
+
+df_merged = df1.merge(df2[['Numero de documento (IDNITCC)'] + col_act], on='Numero de documento (IDNITCC)', how='left', suffixes=('', '_df2'))
+
+for col in col_act:
+    df_merged[col] = df_merged[col + '_df2'].combine_first(df_merged[col])
+
+df_merged.drop(columns=[col + '_df2' for col in col_act], inplace=True)
+
+df1 = df_merged
+col_adicion = ['CATEGORIA_MATRICULA_RUES', 'ESTADO_DE_LA_MATRICULA_RUES']
+df1 = df1.merge(df2[['Numero de documento (IDNITCC)'] + col_adicion], on='Numero de documento (IDNITCC)', how='left')
+
+
+print(df1['Codigo del municipio de ubicacion de la empresa (MPIO)'].isna().sum())
+print(df1['Ingresos'].isna().sum())
+print(df1['Personal Ocupado'].isna().sum())
+
+df1['Ingresos'].describe()
+df1['Personal Ocupado'].describe()
+
+#_____________________________________________________________________________
+#_____________________________________________________________________________
+#_________________________ Criterio de inclusión _____________________________
+#_____________________________________________________________________________
+#_____________________________________________________________________________
+
+#### Estratificación según CIIU
+r_Estratos = "C:\\Users\\brial\\OneDrive - dane.gov.co\\Cruce de directorios-Transporte\\Estratos.xlsx"
+Estratos = pd.read_excel(r_Estratos)
+Estratos.columns
+# Aplicación del segundo parametro de inclusión: Empresas por actividad principal
+df1.rename(columns={'Actividad economica CIIU REV. 4 A.C. (ACTCOD1)': 'CIIU_PPAL'}, inplace=True)
+df_f = df1[df1['CIIU_PPAL'].isin(Estratos[Estratos.columns[0]])]
+df_f2 = df1[df1['Actividad economica CIIU REV. 4 A.C. (ACTCOD2)'].isin(Estratos[Estratos.columns[0]])]
+df_f3 = df1[df1['Actividad economica CIIU REV. 4 A.C. (ACTCOD3)'].isin(Estratos[Estratos.columns[0]])]
+df_f4 = df1[df1['Actividad economica CIIU REV. 4 A.C. (ACTCOD4)'].isin(Estratos[Estratos.columns[0]])]
+
+
+
+df_concat = pd.concat([df_f, df_f2, df_f3, df_f4], ignore_index=True)
+
+
+df_SC = df_concat.drop_duplicates(subset='Numero de documento (IDNITCC)')
+
+df_f.columns
+print('Empresas incluidas', df_f.shape[0], 'de ', df1.shape[0], 'posibles')
+
+
+df_f['Ingresos'].isna().sum()
+df_f['Personal Ocupado'].isna().sum()
+
+# Juridica
+vaf = df_f['Tipo de Organizacion (IDOJ)'].isna().sum()
+
+df_f['Ingresos'].describe()
+
+df_f = df_f.loc[df_f['Tipo de Organizacion (IDOJ)'] == 'JURIDICA'][:]
+
+df_PJ = df_f.loc[df_f['Tipo de Organizacion (IDOJ)'] != 'JURIDICA'][:]
+df_PJ.loc[:]['Personal Ocupado'].describe()
+df_PJ.loc[:]['Ingresos'].describe()
+
+#_____________________________________________________________________________
+#_____________________________________________________________________________
+#_________________________ Criterio de exclusión _____________________________
+#_____________________________________________________________________________
+#_____________________________________________________________________________
+
+df_f = df_f.loc[df_f['ESTADO_DE_LA_MATRICULA_RUES'] == 'ACTIVA'][:]
+
+
+# Analisis en ingreso y Personal Ocupado para ESTADO LEGAL no activa
+df_NA = df_f.loc[df_f['ESTADO_DE_LA_MATRICULA_RUES'] != 'ACTIVA'][:]
+
+df_NA.loc[:]['Personal Ocupado'].describe()
+df_NA.loc[:]['Ingresos'].describe()
+
+
+df_f.shape
+
+Base_final.shape
+
+#_____________________________________________________________________________
+#_____________________________________________________________________________
+#_________________________ Marco muestral _____________________________
+#_____________________________________________________________________________
+#_____________________________________________________________________________
+
+marco = df_f['CIIU_PPAL'].value_counts()
+
+type(marco)
+
+marco = pd.DataFrame(marco)
+df_f['Nombre del directorio']
+marco = marco.reset_index().rename(columns={'index': 'Cod'})
+
+Estratos.rename(columns={ 
+                    Estratos.columns[0]: marco.columns[0],
+                    Estratos.columns[1]: 'Descripcion'}, inplace=True)
+
+marco = marco.merge(Estratos[['CIIU_PPAL'] + ['Descripcion']], on= 'CIIU_PPAL', how='left')
+
+marco.to_excel('marco.xlsx', index=False)
+
+prueba = df1['CIIU_PPAL'].value_counts()
+Estratos.rename(columns={ 
+                    Estratos.columns[0]: marco.columns[0],
+                    Estratos.columns[1]: 'Descripcion'}, inplace=True)
+
+marco = marco.merge(Estratos[['CIIU_PPAL'] + ['Descripcion']], on= 'CIIU_PPAL', how='left')
+
+marco.to_excel('marco.xlsx', index=False)
+
+
+
+### Imputación por distancia minima
+
+Result_marc_mues = imputacion_ingresos(df_f, 'Numero de documento (IDNITCC)', 'CIIU_PPAL', 'Personal Ocupado', 'Ingresos')
+
+
+
+#_________________________________________________________________________________
+#_________________________________________________________________________________
+#_________________________ Exportación y desagregación por CIIU___________________
+#_________________________________________________________________________________
+#_________________________________________________________________________________
+
+
+with pd.ExcelWriter('Inf_Des_Est.xlsx', engine='xlsxwriter') as writer:
+    for estrato, datos_estrato in Result_marc_mues.groupby('CIIU_PPAL'):
+        # Exporta cada estrato a una hoja separada
+        datos_estrato.to_excel(writer, sheet_name=f'CIIU_{estrato}', index=False)
+
+##__________________________________________________________________________________
+
+
+df_imputado = imputacion_ingresos(df1, 'Numero de documento (IDNITCC)', 'CIIU_PPAL', 'Personal Ocupado', 'Ingresos')
+
+
+
+def seleccionar_muestra(df, columna_ciiu, columna_ingresos, porcentaje_corte=90):
+
+    muestra_seleccionada = pd.DataFrame()
+
+    grupos_ciiu = df.groupby(columna_ciiu)
+    
+    for ciiu, grupo in grupos_ciiu:
+
+        grupo = grupo.sort_values(by=columna_ingresos, ascending=False).reset_index(drop=True)
+        grupo['Ingresos_Acumulados'] = grupo[columna_ingresos].cumsum()
+
+        total_ingresos = grupo[columna_ingresos].sum()
+        grupo['Porcentaje_Acumulado'] = (grupo['Ingresos_Acumulados'] / total_ingresos) * 100
+
+        grupo_seleccionado = grupo[grupo['Porcentaje_Acumulado'] <= porcentaje_corte]
+        muestra_seleccionada = pd.concat([muestra_seleccionada, grupo_seleccionado])
+
+    return muestra_seleccionada
+
+df_muestra = seleccionar_muestra(df_imputado, 'CIIU_PPAL', 'Ingresos', porcentaje_corte=90)
+df_muestra.columns
+df_muestra['CIIU_PPAL']
+
+
+muestra_seleccionada = pd.DataFrame()
+columna_ingresos = 'Ingresos'
+porcentaje_corte=90
+
+columna_ciiu = 'CIIU_PPAL'
+df = df1
+grupos_ciiu = df.groupby(columna_ciiu)
+
+for ciiu, grupo in grupos_ciiu:
+
+    grupo = grupo.sort_values(by=columna_ingresos, ascending=False).reset_index(drop=True)
+    grupo['Ingresos_Acumulados'] = grupo[columna_ingresos].cumsum()
+
+    total_ingresos = grupo[columna_ingresos].sum()
+    grupo['Porcentaje_Acumulado'] = (grupo['Ingresos_Acumulados'] / total_ingresos) * 100
+
+    grupo_seleccionado = grupo[grupo['Porcentaje_Acumulado'] <= porcentaje_corte]
+    muestra_seleccionada = pd.concat([muestra_seleccionada, grupo_seleccionado])
